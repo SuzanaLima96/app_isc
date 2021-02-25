@@ -1,0 +1,192 @@
+---
+title: "Protocolo linkage banco 1"
+author: "Suzana de Lima"
+date: "Fevereiro, 2021"
+background: "http\\://www.isc.ufba.br/wp-content/uploads/2016/12/logo-300x81.png"
+output: 
+  rmdformats::downcute
+---
+
+# Base de dados
+
+* Foram disponibilizadas quatro base de dados para relacionar, sendo elas:
+
+    1. **paciente_isc_14012021.csv**: Composto por 14 variáveis e 1.424.830 observações;
+    
+    2. **carga_viral_anonimizado_14012021.csv**: Composto por 17 variáveis e 7.948.382 observações;
+    
+    3. **cd4_anonimizado_14012021.csv**: Composto por 19 variáveis e 7.339.783 observações;
+    
+    4. **dispensas_2000a2018_data18022021.csv**: Composto por 18 variáveis e 86.473.127 observações.
+    
+# Materiais
+
+* A versão do Software R foi 3.6.0 (2019-04-26)
+
+* Pacotes utilizados para leitura e manipulação dos dados:
+
+   * *Sparklyr*: Interface para o Apache Spark, versão do pacote 1.5.2 versão do Spark 3.0.1;
+   
+   * *dplyr*: Manipulação de dados, versão 0.8.3;
+   
+   * *stringr*: Wrappers simples e consistentes para operações de strings comuns, versão 1.4.0;
+   
+   * *tidyr*: Manipulação de dados, versão 1.0.0.
+   
+# Processamento da base de dados
+
+## paciente_isc_14012021.csv
+
+### Verificação de duplicados
+
+   1. Se codigo_paciente e data_de_nascimento duplicado;
+    
+   2. Exclui o mais antigo e mantém somente um.
+
+Para verificar a duplicidade na base foi observada em conjunto as variáveis código_paciente e data_de_nascimento, após feito o procedimento constataram que haviam 1028 indivíduos duplicados e assim sendo excluídos os mais antigos.
+
+## carga_viral_anonimizado_14012021.csv
+
+### Verificação de duplicados
+
+  1. Se codigo_paciente e data_coleta_anexo2_39 duplicado, criar variável indicadora;
+  
+  2. duplicado_cv = (1: paciente duplicado; 0: paciente não duplicado)
+  
+### Base de dados com variáveis trocadas
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+require(dplyr)
+cbind("Variável no banco" = c("data_resultado_anexo2_48",
+                              "condicao_chegada_anexo2_49",
+                              "material_biologico_anexo2_50",
+                              "qtde_copias_anexo2_51",
+                              "volume_amostra_anexo2_53",
+                              "tecnica_utilizada_anexo2_54"),
+  "Variável real" = c("condicao_chegada_anexo2_49",
+                      "material_biologico_anexo2_50",
+                      "qtde_copias_anexo2_51",
+                      "volume_amostra_anexo2_53",
+                      "tecnica_utilizada_anexo2_54",
+                      "data_resultado_anexo2_48")) %>% 
+  knitr::kable()
+```
+
+### Criação de variáveis
+
+* A partir da variável **data_coleta_anexo2_49** foram criadas as variáveis:
+    
+    * Ano;
+    
+    * Mês;
+    
+    * Dia.
+    
+* Variável **n_cv**, quantidade de exames cv feito no mês.
+
+## cd4_anonimizado_14012021.csv
+
+### Verificação de duplicados
+
+  1. Se codigo_paciente e data_coleta_anexo3_39, duplicado, criar variável indicadora;
+  
+  2. duplicado_cd4 = (1: paciente duplicado; 0: paciente não duplicado)
+  
+### Criação de variáveis
+
+* A partir da variável **data_coleta_anexo3_39** foram criadas as variáveis:
+    
+    * Ano;
+    
+    * Mês;
+    
+    * Dia.
+    
+* Variável **n_cd4**, quantidade de exames cv feito no mês.
+
+## dispensas_2000a2018_data18022021.csv
+
+### Verificação de duplicados e Criação de variáveis
+
+* A partir da variável **data_dispensa** foram criadas as variáveis:
+    
+    * Ano;
+    
+    * Mês;
+    
+    * Dia.
+
+* Cada medicamento dispensado, mesmo que em uma única data, estava discriminado em linhas distintas;
+
+* Afim de reduzir a dimensão de observações foram produzidas variáveis a partir das variáveis:
+
+   1. medicamento_arv_disp
+   
+   2. forma_farmaceutica
+   
+   3. quantidade_dispensada
+   
+   4. pres_diaria_disp
+
+* Se o medicamento foi dispensado naquele dia recebia um valor de acordo com a forma_farmaceutica;
+
+Resultando então:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+cbind(medicamento_arv_disp = c("Abacavir","Aciclovir","Amprenavir","Anfotericina B","Atazanavir",
+                         "Darunavir","Delavirdina","Didanosina","Didanosina Entérica",
+                         "Dolutegravir","Efavirenz","Enfuvirtida","Estavudina","Etravirina",
+                         "Fluconazol","Fosamprenavir","Ganciclovir","Indinavir","Lamivudina",
+                         "Lopinavir + Ritonavir","Maraviroque","Nelfinavir","Nevirapina",
+                         "Pentamidina","Raltegravir","Ritonavir","Saquinavir cápsula dura",
+                         "Saquinavir cápsula gelatinosa mole","Talidomida","Tenofovir",
+                         "Tenofovir+Lamivudina","Tenofovir+Lamivudina+Efavirenz","Tipranavir",
+                         "Zalcitabina","Zidovudina","Zidovudina + Lamivudina"),
+"Variável dicotômica" = c("ABC_disp","ACC_disp","AMP_disp","ANB_disp","ATV_disp","DRV_disp",
+                          "DEL_disp","DDL_disp","DDLE_disp","DGT_disp","EFZ_disp","T_20_disp",
+                          "EST_disp","ETR_disp","FLU_disp","FPV_disp","GCC_disp","IND_disp",
+                          "L3TC_disp","LPVr_disp","MVQ_disp","NLF_disp","NVP_disp","PEN_disp",
+                          "RAL_disp","RTV_disp","SCD_disp","SCGM_disp","TAL_disp","TDF_disp",
+                          "TL_disp","DFC_TLE_disp","TIP_disp","ZAL_disp","AZT_disp","ZL_disp"),
+
+quantidade_disp = c("ABC_n","ACC_n","AMP_n","ANB_n","ATV_n","DRV_n",
+                  "DEL_n","DDL_n","DDLE_n","DGT_n","EFZ_n","T_20_n",
+                  "EST_n","ETR_n","FLU_n","FPV_n","GCC_n","IND_n",
+                  "L3TC_n","LPVr_n","MVQ_n","NLF_n","NVP_n","PEN_n",
+                  "RAL_n","RTV_n","SCD_n","SCGM_n","TAL_n","TDF_n",
+                  "TL_n","DFC_TLE_n","TIP_n","ZAL_n","AZT_n","ZL_n"),
+
+pres_diaria_disp = c("ABC_pres_diaria","ACC_pres_diaria","AMP_pres_diaria","ANB_pres_diaria","ATV_pres_diaria",
+                     "DRV_pres_diaria",               "DEL_pres_diaria","DDL_pres_diaria","DDLE_pres_diaria","DGT_pres_diaria","EFZ_pres_diaria","T_20_pres_diaria",
+                  "EST_pres_diaria","ETR_pres_diaria","FLU_pres_diaria","FPV_pres_diaria","GCC_pres_diaria","IND_pres_diaria",
+                  "L3TC_pres_diaria","LPVr_pres_diaria","MVQ_pres_diaria","NLF_pres_diaria","NVP_pres_diaria","PEN_pres_diaria",
+                  "RAL_pres_diaria","RTV_pres_diaria","SCD_pres_diaria","SCGM_pres_diaria","TAL_pres_diaria","TDF_pres_diaria",
+                  "TL_pres_diaria","DFC_TLE_pres_diaria","TIP_pres_diaria","ZAL_pres_diaria","AZT_pres_diaria","ZL_pres_diaria"))%>% 
+  knitr::kable()
+```
+
+Após feita a criação das variáveis, foi agrupado por codigo_paciente, ano, mes e dia e assim somando resultando na redução em 49.968.655.
+
+# Merge da base
+
+* O merge entre as bases carga_viral, cd4 e dispensa foi feito através das variáveis:
+
+  1. codigo_paciente
+  
+  2. Ano
+  
+  3. Mês
+  
+* Com o resultado do primeiro merge foi feito então outro merge com a base paciente através da variável:
+
+  1. codigo_paciente
+  
+# Resultado
+
+* A base final tem dimensão de 185 variáveis e 36.518.066 de observações
+
+* /dados/projetos_acesso/projeto_impacto_BF_hiv/paciente_cd4_cargaviral_dispensa/paciente_cd4_cargaviral_dispensa.csv
+
+* Delimitado por ";"
+
+* 25.7 GB
